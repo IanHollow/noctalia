@@ -1,6 +1,7 @@
 #include "shell/dock/dock_items.h"
 
 #include "config/config_service.h"
+#include "core/input/event_codes.h"
 #include "core/ui_phase.h"
 #include "i18n/i18n.h"
 #include "render/core/renderer.h"
@@ -22,7 +23,6 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
-#include <linux/input-event-codes.h>
 #include <memory>
 #include <numbers>
 #include <utility>

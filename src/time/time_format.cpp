@@ -9,12 +9,75 @@
 #include <ctime>
 #include <format>
 #include <langinfo.h>
+#include <libical/ical.h>
 #include <locale>
 #include <optional>
 #include <string>
 #include <string_view>
 
 namespace {
+
+  struct ZonedTime {
+    std::tm tm{};
+    std::string abbreviation;
+  };
+
+  icaltimezone* findTimezone(std::string_view name) {
+    if (name == "UTC" || name == "Etc/UTC" || name == "GMT") {
+      return icaltimezone_get_utc_timezone();
+    }
+    const std::string location{name};
+    return icaltimezone_get_builtin_timezone(location.c_str());
+  }
+
+  std::string timezoneAbbreviation(icaltimezone* zone, bool isDaylight) {
+    const char* names = icaltimezone_get_tznames(zone);
+    if (names == nullptr) {
+      return {};
+    }
+    const std::string_view allNames{names};
+    const std::size_t separator = allNames.find('/');
+    if (separator == std::string_view::npos) {
+      return std::string{allNames};
+    }
+    return std::string{isDaylight ? allNames.substr(separator + 1) : allNames.substr(0, separator)};
+  }
+
+  std::optional<ZonedTime> timezoneTime(std::int64_t unixSeconds, std::string_view timezoneName) {
+    icaltimezone* zone = findTimezone(timezoneName);
+    if (zone == nullptr) {
+      return std::nullopt;
+    }
+
+    const std::time_t raw = static_cast<std::time_t>(unixSeconds);
+    icaltimetype utc = icaltime_from_timet_with_zone(raw, 0, icaltimezone_get_utc_timezone());
+    int isDaylight = 0;
+    const int offset = icaltimezone_get_utc_offset_of_utc_time(zone, &utc, &isDaylight);
+    const icaltimetype local = icaltime_from_timet_with_zone(raw, 0, zone);
+
+    using namespace std::chrono;
+    const year_month_day ymd{
+        year{local.year} / month{static_cast<unsigned>(local.month)} / day{static_cast<unsigned>(local.day)}
+    };
+    if (!ymd.ok()) {
+      return std::nullopt;
+    }
+    const sys_days localDay{ymd};
+
+    ZonedTime result;
+    result.tm.tm_year = local.year - 1900;
+    result.tm.tm_mon = local.month - 1;
+    result.tm.tm_mday = local.day;
+    result.tm.tm_hour = local.hour;
+    result.tm.tm_min = local.minute;
+    result.tm.tm_sec = local.second;
+    result.tm.tm_wday = weekday{localDay}.c_encoding();
+    result.tm.tm_yday = static_cast<int>((localDay - sys_days{ymd.year() / January / 1}).count());
+    result.tm.tm_isdst = isDaylight;
+    result.tm.tm_gmtoff = offset;
+    result.abbreviation = timezoneAbbreviation(zone, isDaylight != 0);
+    return result;
+  }
 
   std::string
   formatAgeSeconds(std::int64_t secs, std::optional<std::chrono::system_clock::time_point> calendarAfterSixDays) {
@@ -250,11 +313,7 @@ bool isValidTimezone(std::string_view tzName) {
   if (tzName.empty()) {
     return true;
   }
-  try {
-    return std::chrono::locate_zone(tzName) != nullptr;
-  } catch (...) {
-    return false;
-  }
+  return findTimezone(tzName) != nullptr;
 }
 
 std::string formatTimezoneUnixTime(std::int64_t unixSeconds, std::string_view fmt, std::string_view tzName) {
@@ -262,15 +321,8 @@ std::string formatTimezoneUnixTime(std::int64_t unixSeconds, std::string_view fm
     return formatLocalUnixTime(unixSeconds, fmt);
   }
 
-  using namespace std::chrono;
-  const time_zone* tz = nullptr;
-  try {
-    tz = locate_zone(tzName);
-  } catch (...) {
-    return formatLocalUnixTime(unixSeconds, fmt);
-  }
-
-  if (tz == nullptr) {
+  auto zoned = timezoneTime(unixSeconds, tzName);
+  if (!zoned.has_value()) {
     return formatLocalUnixTime(unixSeconds, fmt);
   }
 
@@ -278,30 +330,20 @@ std::string formatTimezoneUnixTime(std::int64_t unixSeconds, std::string_view fm
   if (isBlankClockFormat(normalizedFmt)) {
     return {};
   }
-  const auto tp = sys_seconds{seconds{unixSeconds}};
-  const auto local = tz->to_local(tp);
-  const auto zoneInfo = tz->get_info(tp);
+  zoned->tm.tm_zone = zoned->abbreviation.data();
 
-  std::tm tm{};
-  const auto localDays = floor<days>(local);
-  year_month_day ymd{localDays};
-  hh_mm_ss time{floor<seconds>(local - localDays)};
-  tm.tm_year = static_cast<int>(ymd.year()) - 1900;
-  tm.tm_mon = static_cast<unsigned>(ymd.month()) - 1;
-  tm.tm_mday = static_cast<unsigned>(ymd.day());
-  tm.tm_hour = static_cast<int>(time.hours().count());
-  tm.tm_min = static_cast<int>(time.minutes().count());
-  tm.tm_sec = static_cast<int>(time.seconds().count());
-  tm.tm_wday = weekday(localDays).c_encoding();
-  tm.tm_yday = static_cast<int>((localDays - local_days{ymd.year() / January / 1}).count());
-  tm.tm_isdst = zoneInfo.save != minutes::zero();
-  tm.tm_gmtoff = static_cast<long>(zoneInfo.offset.count());
-  tm.tm_zone = zoneInfo.abbrev.c_str();
-
-  if (auto compat = formatStrftimeCompat(normalizedFmt, tm, unixSeconds)) {
+  if (auto compat = formatStrftimeCompat(normalizedFmt, zoned->tm, unixSeconds)) {
     return *compat;
   }
 
+  using namespace std::chrono;
+  const year_month_day ymd{
+      year{zoned->tm.tm_year + 1900}
+      / month{static_cast<unsigned>(zoned->tm.tm_mon + 1)}
+      / day{static_cast<unsigned>(zoned->tm.tm_mday)}
+  };
+  const local_seconds local =
+      local_days{ymd} + hours{zoned->tm.tm_hour} + minutes{zoned->tm.tm_min} + seconds{zoned->tm.tm_sec};
   try {
     return std::vformat(std::locale(""), normalizedFmt, std::make_format_args(local));
   } catch (...) {

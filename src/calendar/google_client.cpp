@@ -8,6 +8,7 @@
 #include "time/time_format.h"
 
 #include <charconv>
+#include <ctime>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -41,11 +42,14 @@ namespace calendar {
       if (!ymd.ok()) {
         return std::nullopt;
       }
-      try {
-        return toSystem(time_point_cast<seconds>(current_zone()->to_sys(local_days{ymd})));
-      } catch (...) {
-        return toSystem(sys_days{ymd});
-      }
+      std::tm local{};
+      local.tm_year = static_cast<int>(ymd.year()) - 1900;
+      local.tm_mon = static_cast<int>(static_cast<unsigned>(ymd.month())) - 1;
+      local.tm_mday = static_cast<int>(static_cast<unsigned>(ymd.day()));
+      local.tm_isdst = -1;
+      const std::time_t unixSeconds = std::mktime(&local);
+      return unixSeconds != static_cast<std::time_t>(-1) ? std::chrono::system_clock::from_time_t(unixSeconds)
+                                                         : toSystem(sys_days{ymd});
     }
 
     // RFC 3339 "YYYY-MM-DDTHH:MM:SS[.fff](Z|±HH:MM)" -> UTC time_point.

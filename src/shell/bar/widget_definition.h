@@ -553,17 +553,18 @@ namespace noctalia::bar {
 
     [[nodiscard]] std::vector<settings::WidgetSettingSpec> presentedSettingSpecs() const {
       validate();
-      return fields
-          | std::views::filter([](const WidgetDefinitionField<Options>& definitionField) {
-               return definitionField.presentation.has_value();
-             })
-          | std::views::transform([](const WidgetDefinitionField<Options>& definitionField) {
-               settings::WidgetSettingSpec spec;
-               static_cast<settings::WidgetSettingPresentation&>(spec) = *definitionField.presentation;
-               spec.schema = definitionField.schema;
-               return spec;
-             })
-          | std::ranges::to<std::vector>();
+      std::vector<settings::WidgetSettingSpec> specs;
+      specs.reserve(fields.size());
+      for (const WidgetDefinitionField<Options>& definitionField : fields) {
+        if (!definitionField.presentation.has_value()) {
+          continue;
+        }
+        settings::WidgetSettingSpec spec;
+        static_cast<settings::WidgetSettingPresentation&>(spec) = *definitionField.presentation;
+        spec.schema = definitionField.schema;
+        specs.push_back(std::move(spec));
+      }
+      return specs;
     }
 
   private:

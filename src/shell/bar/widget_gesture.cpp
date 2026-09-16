@@ -1,8 +1,9 @@
 #include "shell/bar/widget_gesture.h"
 
+#include "core/input/event_codes.h"
+
 #include <algorithm>
 #include <array>
-#include <linux/input-event-codes.h>
 #include <wayland-client-protocol.h>
 
 namespace noctalia::bar {

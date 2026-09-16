@@ -1,5 +1,6 @@
 #include "ui/ui_tree_reconciler.h"
 
+#include "core/input/event_codes.h"
 #include "core/input/keybind_matcher.h"
 #include "core/log.h"
 #include "render/core/color.h"
@@ -27,12 +28,11 @@
 #include "ui/palette.h"
 #include "ui/style.h"
 #include "ui/ui_tree.h"
+#include "util/string_utils.h"
 
-#include <charconv>
 #include <cmath>
 #include <format>
 #include <functional>
-#include <linux/input-event-codes.h>
 #include <optional>
 #include <unordered_set>
 #include <utility>
@@ -162,15 +162,18 @@ namespace ui {
       if (const auto slash = base.find('/'); slash != std::string_view::npos) {
         const std::string_view alphaText = base.substr(slash + 1);
         base = base.substr(0, slash);
-        const auto* end = alphaText.data() + alphaText.size();
-        if (const auto res = std::from_chars(alphaText.data(), end, alpha);
-            res.ec != std::errc{} || res.ptr != end || alpha < 0.0F || alpha > 1.0F) {
+        const auto parsed = StringUtils::parseDotDecimalPrefix<float>(alphaText);
+        if (!parsed.has_value()
+            || parsed->consumed != alphaText.size()
+            || parsed->value < 0.0F
+            || parsed->value > 1.0F) {
           kLog.warn(
               "ui node '{}': invalid alpha '{}' in color '{}' for prop '{}' (expected 0.0-1.0)", node.type, alphaText,
               *token, key
           );
           return std::nullopt;
         }
+        alpha = parsed->value;
       }
       if (auto role = colorRoleFromToken(base); role.has_value()) {
         return colorSpecFromRole(*role, alpha);

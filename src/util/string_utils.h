@@ -1,22 +1,27 @@
 #pragma once
 
 #include <algorithm>
-#include <array>
 #include <cctype>
-#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <format>
+#include <iomanip>
+#include <locale>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <string_view>
-#include <system_error>
 #include <type_traits>
 #include <vector>
 
 namespace StringUtils {
+
+  template <typename T> struct DotDecimalPrefix {
+    T value{};
+    std::size_t consumed = 0;
+  };
 
   [[nodiscard]] inline std::string_view trimLeftView(std::string_view s) {
     while (!s.empty() && std::isspace(static_cast<unsigned char>(s.front())) != 0) {
@@ -57,41 +62,41 @@ namespace StringUtils {
     return out;
   }
 
+  template <typename T>
+  [[nodiscard]] inline std::optional<DotDecimalPrefix<T>> parseDotDecimalPrefix(std::string_view text) {
+    static_assert(std::is_floating_point_v<T>);
+
+    if (text.empty() || text.front() == '+' || std::isspace(static_cast<unsigned char>(text.front())) != 0) {
+      return std::nullopt;
+    }
+
+    std::istringstream stream{std::string(text)};
+    stream.imbue(std::locale::classic());
+    T value{};
+    stream >> std::noskipws >> value;
+    if (stream.fail() || !std::isfinite(value)) {
+      return std::nullopt;
+    }
+    const std::streampos position = stream.tellg();
+    const std::size_t consumed = position == std::streampos(-1) ? text.size() : static_cast<std::size_t>(position);
+    return DotDecimalPrefix<T>{.value = value, .consumed = consumed};
+  }
+
   template <typename T> [[nodiscard]] inline std::optional<T> parseDotDecimal(std::string_view text) {
     static_assert(std::is_floating_point_v<T>);
 
     const std::string trimmed = trim(text);
-    if (trimmed.empty()) {
+    const auto parsed = parseDotDecimalPrefix<T>(trimmed);
+    if (!parsed.has_value() || parsed->consumed != trimmed.size()) {
       return std::nullopt;
     }
-
-    T value{};
-    const char* begin = trimmed.data();
-    const char* end = begin + trimmed.size();
-    const auto [ptr, ec] = std::from_chars(begin, end, value, std::chars_format::general);
-    if (ec != std::errc{} || ptr != end || !std::isfinite(value)) {
-      return std::nullopt;
-    }
-    return value;
+    return parsed->value;
   }
 
-  [[nodiscard]] inline std::string formatDotDecimal(double value) {
-    std::array<char, 64> buffer{};
-    const auto [ptr, ec] = std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
-    if (ec != std::errc{}) {
-      return {};
-    }
-    return std::string(buffer.data(), ptr);
-  }
+  [[nodiscard]] inline std::string formatDotDecimal(double value) { return std::format("{}", value); }
 
   [[nodiscard]] inline std::string formatFixedDotDecimal(double value, int precision) {
-    std::array<char, 64> buffer{};
-    const auto [ptr, ec] =
-        std::to_chars(buffer.data(), buffer.data() + buffer.size(), value, std::chars_format::fixed, precision);
-    if (ec != std::errc{}) {
-      return {};
-    }
-    return std::string(buffer.data(), ptr);
+    return std::format("{:.{}f}", value, precision);
   }
 
   [[nodiscard]] inline std::string toLower(std::string_view s) {

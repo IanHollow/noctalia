@@ -1,5 +1,6 @@
 #include "wayland/wayland_seat.h"
 
+#include "core/input/event_codes.h"
 #include "core/input/shortcut_keysym.h"
 #include "core/log.h"
 #include "cursor-shape-v1-client-protocol.h"
@@ -7,7 +8,6 @@
 #include <algorithm>
 #include <clocale>
 #include <cstring>
-#include <linux/input-event-codes.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <xkbcommon/xkbcommon-compose.h>

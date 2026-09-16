@@ -1,5 +1,6 @@
 #include "ui/controls/context_menu.h"
 
+#include "core/input/event_codes.h"
 #include "core/ui_phase.h"
 #include "render/scene/input_area.h"
 #include "ui/builders.h"
@@ -9,7 +10,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <linux/input-event-codes.h>
 
 namespace {
 

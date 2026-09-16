@@ -560,11 +560,11 @@ std::span<const ShortcutRegistry::CatalogEntry> ShortcutRegistry::catalog() {
   // strings are held in a stable static deque so the CatalogEntry views stay valid.
   static std::deque<std::string> storage;
   static const std::vector<CatalogEntry> combined = [] {
-    auto result = kBuiltinShortcuts
-        | std::views::transform([](const BuiltinShortcutDescriptor& shortcut) {
-                    return CatalogEntry{.type = shortcut.type, .labelKey = shortcut.labelKey};
-                  })
-        | std::ranges::to<std::vector>();
+    std::vector<CatalogEntry> result;
+    result.reserve(kBuiltinShortcuts.size());
+    for (const BuiltinShortcutDescriptor& shortcut : kBuiltinShortcuts) {
+      result.push_back(CatalogEntry{.type = shortcut.type, .labelKey = shortcut.labelKey});
+    }
     scripting::PluginRegistry::instance().ensureScanned();
     for (const auto& entry :
          scripting::PluginRegistry::instance().entriesOfKind(scripting::PluginEntryKind::Shortcut)) {

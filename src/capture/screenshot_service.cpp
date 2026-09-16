@@ -13,6 +13,7 @@
 #include "notification/notification_manager.h"
 #include "render/core/image_encoder.h"
 #include "render/core/image_file_loader.h"
+#include "render/core/stb_image_resize2_compat.h"
 #include "render/render_context.h"
 #include "shell/panel/panel_manager.h"
 #include "time/time_format.h"
@@ -25,7 +26,6 @@
 #include <algorithm>
 #include <array>
 #include <cerrno>
-#include <charconv>
 #include <chrono>
 #include <cmath>
 #include <csignal>
@@ -37,7 +37,6 @@
 #include <format>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include <stb/stb_image_resize2.h>
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
@@ -52,13 +51,11 @@ namespace {
   constexpr const char* kAnnotateStateOwner = "annotate";
 
   [[nodiscard]] std::optional<double> parseDouble(std::string_view text) {
-    double value = 0.0;
-    const auto* end = text.data() + text.size();
-    const auto result = std::from_chars(text.data(), end, value);
-    if (result.ec != std::errc{} || result.ptr != end || !std::isfinite(value)) {
+    const auto parsed = StringUtils::parseDotDecimalPrefix<double>(text);
+    if (!parsed.has_value() || parsed->consumed != text.size()) {
       return std::nullopt;
     }
-    return value;
+    return parsed->value;
   }
 
   [[nodiscard]] std::optional<capture::AnnotationColor> parseAnnotationColor(std::string_view text) {

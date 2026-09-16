@@ -1,5 +1,6 @@
 #include "system/gamma_service.h"
 
+#include "core/files/anonymous_file.h"
 #include "core/log.h"
 #include "ipc/ipc_service.h"
 #include "system/day_night_schedule.h"
@@ -319,15 +320,9 @@ void GammaService::applyGammaToOutput(OutputGamma& og, int kelvin) {
   }
 
   const std::size_t tableBytes = 3 * og.gammaSize * sizeof(std::uint16_t);
-  const int fd = memfd_create("gamma", MFD_CLOEXEC);
+  const int fd = core::createAnonymousFile("gamma", tableBytes);
   if (fd < 0) {
-    kLog.warn("memfd_create failed");
-    return;
-  }
-
-  if (ftruncate(fd, static_cast<off_t>(tableBytes)) < 0) {
-    ::close(fd);
-    kLog.warn("ftruncate failed for gamma ramp");
+    kLog.warn("failed to create gamma ramp file");
     return;
   }
 

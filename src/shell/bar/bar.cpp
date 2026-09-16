@@ -3,6 +3,7 @@
 #include "compositors/compositor_platform.h"
 #include "config/config_service.h"
 #include "core/deferred_call.h"
+#include "core/input/event_codes.h"
 #include "core/log.h"
 #include "core/process/process.h"
 #include "core/scoped_timer.h"
@@ -32,7 +33,6 @@
 #include <algorithm>
 #include <cerrno>
 #include <cmath>
-#include <linux/input-event-codes.h>
 #include <optional>
 #include <ranges>
 #include <unordered_set>

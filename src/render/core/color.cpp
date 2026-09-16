@@ -1,8 +1,9 @@
 #include "render/core/color.h"
 
+#include "util/string_utils.h"
+
 #include <algorithm>
 #include <cctype>
-#include <charconv>
 #include <cmath>
 #include <cstdio>
 #include <numbers>
@@ -281,12 +282,12 @@ static bool parseCssColor(std::string_view text, Color& out, bool allowNamedColo
   // Alpha: number in [0,1] or percentage in [0,100]%.
   auto parseAlpha = [&](std::string_view& sv, float& result) -> bool {
     skipSpaces(sv);
-    float v = 0.0F;
-    const auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), v);
-    if (ec != std::errc{}) {
+    const auto parsed = StringUtils::parseDotDecimalPrefix<float>(sv);
+    if (!parsed.has_value()) {
       return false;
     }
-    sv.remove_prefix(static_cast<std::size_t>(ptr - sv.data()));
+    float v = parsed->value;
+    sv.remove_prefix(parsed->consumed);
     if (!sv.empty() && sv.front() == '%') {
       sv.remove_prefix(1);
       v /= 100.0F;
@@ -305,12 +306,12 @@ static bool parseCssColor(std::string_view text, Color& out, bool allowNamedColo
     // Channel: number in [0,255] or percentage in [0,100]%, normalized to [0,1].
     auto parseChannel = [&](std::string_view& sv, float& result) -> bool {
       skipSpaces(sv);
-      float v = 0.0F;
-      const auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), v);
-      if (ec != std::errc{}) {
+      const auto parsed = StringUtils::parseDotDecimalPrefix<float>(sv);
+      if (!parsed.has_value()) {
         return false;
       }
-      sv.remove_prefix(static_cast<std::size_t>(ptr - sv.data()));
+      float v = parsed->value;
+      sv.remove_prefix(parsed->consumed);
       if (!sv.empty() && sv.front() == '%') {
         sv.remove_prefix(1);
         if (v < 0.0F || v > 100.0F) {
@@ -358,12 +359,12 @@ static bool parseCssColor(std::string_view text, Color& out, bool allowNamedColo
     // Hue: number with an optional angle unit; result in degrees (hsl() wraps the range).
     auto parseHue = [&](std::string_view& sv, float& result) -> bool {
       skipSpaces(sv);
-      float v = 0.0F;
-      const auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), v);
-      if (ec != std::errc{}) {
+      const auto parsed = StringUtils::parseDotDecimalPrefix<float>(sv);
+      if (!parsed.has_value()) {
         return false;
       }
-      sv.remove_prefix(static_cast<std::size_t>(ptr - sv.data()));
+      float v = parsed->value;
+      sv.remove_prefix(parsed->consumed);
       if (sv.starts_with("deg")) {
         sv.remove_prefix(3);
       } else if (sv.starts_with("grad")) {
@@ -383,12 +384,12 @@ static bool parseCssColor(std::string_view text, Color& out, bool allowNamedColo
     // Saturation/lightness: percentage in [0,100]%, normalized to [0,1].
     auto parsePercent = [&](std::string_view& sv, float& result) -> bool {
       skipSpaces(sv);
-      float v = 0.0F;
-      const auto [ptr, ec] = std::from_chars(sv.data(), sv.data() + sv.size(), v);
-      if (ec != std::errc{}) {
+      const auto parsed = StringUtils::parseDotDecimalPrefix<float>(sv);
+      if (!parsed.has_value()) {
         return false;
       }
-      sv.remove_prefix(static_cast<std::size_t>(ptr - sv.data()));
+      const float v = parsed->value;
+      sv.remove_prefix(parsed->consumed);
       if (sv.empty() || sv.front() != '%' || v < 0.0F || v > 100.0F) {
         return false;
       }

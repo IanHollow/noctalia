@@ -4,7 +4,9 @@
 #include "config/config_types.h"
 #include "core/inotify/inotify.h"
 #include "core/log.h"
+#include "core/process/fd_multiplexer.h"
 #include "core/process/process.h"
+#include "core/process/wake_event.h"
 #include "dbus/system_bus.h"
 #include "ipc/ipc_arg_parse.h"
 #include "ipc/ipc_service.h"
@@ -33,8 +35,6 @@
 #include <set>
 #include <string>
 #include <string_view>
-#include <sys/epoll.h>
-#include <sys/eventfd.h>
 #include <thread>
 #include <unistd.h>
 #include <unordered_map>
@@ -682,8 +682,8 @@ struct BrightnessService::Impl {
 
   Inotify m_inotify;
 
-  int eventFd = -1;
-  int epollFd = -1;
+  process::WakeEvent workerWake;
+  process::FdMultiplexer pollMultiplexer;
   std::uint64_t generation = 0;
   bool warnedMissingDdcutil = false;
 
@@ -711,12 +711,6 @@ struct BrightnessService::Impl {
       workerThread.join();
     }
     clearBacklightWatches();
-    if (epollFd >= 0) {
-      ::close(epollFd);
-    }
-    if (eventFd >= 0) {
-      ::close(eventFd);
-    }
   }
 
   void requestStop() {
@@ -732,34 +726,19 @@ struct BrightnessService::Impl {
   }
 
   void setupPollFds() {
-    if (eventFd < 0) {
-      eventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-      if (eventFd < 0) {
-        kLog.warn("eventfd failed, asynchronous DDC brightness updates will be disabled");
-      }
+    if (!workerWake.valid()) {
+      kLog.warn("wake event creation failed, asynchronous DDC brightness updates will be disabled");
     }
 
-    if (epollFd < 0 && (m_inotify.fd() >= 0 || eventFd >= 0)) {
-      epollFd = epoll_create1(EPOLL_CLOEXEC);
-      if (epollFd < 0) {
-        kLog.warn("epoll_create1 failed, brightness watcher integration degraded");
-        return;
-      }
-
-      auto addFd = [this](int fd) {
-        if (fd < 0) {
-          return;
-        }
-        epoll_event event{};
-        event.events = EPOLLIN;
-        event.data.fd = fd;
-        if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &event) != 0) {
-          kLog.warn("epoll_ctl add failed for fd {}", fd);
-        }
-      };
-
-      addFd(m_inotify.fd());
-      addFd(eventFd);
+    if (!pollMultiplexer.valid()) {
+      kLog.warn("fd multiplexer creation failed, brightness watcher integration degraded");
+      return;
+    }
+    if (m_inotify.fd() >= 0 && !pollMultiplexer.add(m_inotify.fd())) {
+      kLog.warn("failed to add inotify to brightness fd multiplexer");
+    }
+    if (workerWake.valid() && !pollMultiplexer.add(workerWake.fd())) {
+      kLog.warn("failed to add worker wake event to brightness fd multiplexer");
     }
   }
 
@@ -1255,21 +1234,18 @@ struct BrightnessService::Impl {
       completions.push(std::move(completion));
     }
 
-    if (eventFd >= 0) {
-      const std::uint64_t one = 1;
-      const ssize_t ignored = ::write(eventFd, &one, sizeof(one));
-      (void)ignored;
+    if (workerWake.valid()) {
+      (void)workerWake.signal();
     }
   }
 
   void handlePollEvents() {
-    if (epollFd >= 0) {
-      epoll_event events[8];
-      const int count = epoll_wait(epollFd, events, 8, 0);
-      for (int i = 0; i < count; ++i) {
-        if (events[i].data.fd == m_inotify.fd()) {
+    if (pollMultiplexer.valid()) {
+      const auto ready = pollMultiplexer.ready();
+      for (std::size_t index = 0; index < ready.count; ++index) {
+        if (ready.values[index] == m_inotify.fd()) {
           handleInotify();
-        } else if (events[i].data.fd == eventFd) {
+        } else if (ready.values[index] == workerWake.fd()) {
           drainWorkerEvent();
           processCompletions();
         }
@@ -1282,15 +1258,7 @@ struct BrightnessService::Impl {
     }
   }
 
-  void drainWorkerEvent() {
-    if (eventFd < 0) {
-      return;
-    }
-
-    std::uint64_t value = 0;
-    while (::read(eventFd, &value, sizeof(value)) > 0) {
-    }
-  }
+  void drainWorkerEvent() { workerWake.drain(); }
 
   void processCompletions() {
     std::queue<WorkerCompletion> ready;
@@ -1752,7 +1720,10 @@ void BrightnessService::registerIpc(IpcService& ipc, std::function<void(BatchCha
 void BrightnessService::setChangeCallback(ChangeCallback callback) { m_impl->changeCallback = std::move(callback); }
 
 int BrightnessService::watchFd() const noexcept {
-  return m_impl->epollFd >= 0 ? m_impl->epollFd : m_impl->m_inotify.fd();
+  if (m_impl->pollMultiplexer.valid()) {
+    return m_impl->pollMultiplexer.fd();
+  }
+  return m_impl->m_inotify.fd() >= 0 ? m_impl->m_inotify.fd() : m_impl->workerWake.fd();
 }
 
 void BrightnessService::dispatchWatch() { m_impl->handlePollEvents(); }

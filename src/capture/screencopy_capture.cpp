@@ -1,5 +1,6 @@
 #include "capture/screencopy_capture.h"
 
+#include "core/files/anonymous_file.h"
 #include "core/log.h"
 #include "wayland/wayland_connection.h"
 #include "wlr-screencopy-unstable-v1-client-protocol.h"
@@ -53,19 +54,7 @@ namespace {
   }
 
   [[nodiscard]] int createAnonymousFile(std::size_t size) {
-#ifdef __linux__
-    const int fd = memfd_create("noctalia-screencopy", MFD_CLOEXEC | MFD_ALLOW_SEALING);
-#else
-    const int fd = -1;
-#endif
-    if (fd < 0) {
-      return -1;
-    }
-    if (ftruncate(fd, static_cast<off_t>(size)) < 0) {
-      close(fd);
-      return -1;
-    }
-    return fd;
+    return core::createAnonymousFile("noctalia-screencopy", size, true);
   }
 
   [[nodiscard]] int bytesPerPixelFromStride(int width, int stride) {

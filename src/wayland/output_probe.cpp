@@ -1,5 +1,6 @@
 #include "wayland/output_probe.h"
 
+#include "core/files/anonymous_file.h"
 #include "core/log.h"
 #include "wayland/layer_surface.h"
 #include "wayland/wayland_connection.h"
@@ -15,17 +16,7 @@ namespace {
 
   constexpr Logger kLog("output-probe");
 
-  int createAnonFd(std::size_t size) {
-    int fd = memfd_create("noctalia-output-probe", MFD_CLOEXEC);
-    if (fd < 0) {
-      return -1;
-    }
-    if (ftruncate(fd, static_cast<off_t>(size)) != 0) {
-      close(fd);
-      return -1;
-    }
-    return fd;
-  }
+  int createAnonFd(std::size_t size) { return core::createAnonymousFile("noctalia-output-probe", size); }
 
   const zwlr_layer_surface_v1_listener kLayerSurfaceListener = {
       .configure = &OutputProbe::handleConfigure,

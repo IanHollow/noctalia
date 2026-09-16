@@ -1,5 +1,6 @@
 #include "ui/controls/color_picker.h"
 
+#include "core/input/event_codes.h"
 #include "cursor-shape-v1-client-protocol.h"
 #include "i18n/i18n.h"
 #include "render/core/renderer.h"
@@ -15,7 +16,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <linux/input-event-codes.h>
 #include <memory>
 #include <string>
 #include <string_view>

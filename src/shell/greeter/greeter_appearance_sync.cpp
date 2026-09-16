@@ -23,14 +23,20 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#if defined(__linux__)
 #include <linux/magic.h>
+#endif
 #include <memory>
 #include <optional>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <sys/stat.h>
+#if defined(__FreeBSD__)
+#include <sys/mount.h>
+#else
 #include <sys/vfs.h>
+#endif
 #include <system_error>
 #include <toml++/toml.hpp>
 #include <unistd.h>
@@ -121,9 +127,18 @@ namespace {
     }
 
     struct statfs filesystemState{};
-    if (::statfs(executable.c_str(), &filesystemState) != 0 || filesystemState.f_type == FUSE_SUPER_MAGIC) {
+    if (::statfs(executable.c_str(), &filesystemState) != 0) {
       return false;
     }
+#if defined(__linux__)
+    if (filesystemState.f_type == FUSE_SUPER_MAGIC) {
+      return false;
+    }
+#elif defined(__FreeBSD__)
+    if (std::string_view(filesystemState.f_fstypename) == "fusefs") {
+      return false;
+    }
+#endif
 
     for (auto directory = executable.parent_path(); !directory.empty(); directory = directory.parent_path()) {
       struct stat directoryState{};

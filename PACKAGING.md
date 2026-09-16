@@ -144,7 +144,8 @@ has copy-paste install lines for common distros.
 
 Notes packagers hit often:
 
-- **stb** must provide `stb/stb_image_resize2.h` (and `stb/stb_image_write.h`).
+- **stb** must provide `stb_image_resize2.h` and `stb_image_write.h`, either
+  below an `stb/` include directory or through its `stb.pc` pkg-config file.
   Older packages that only ship `stb_image_resize` are not enough. Meson fails
   the configure check if `stb_image_resize2` is missing.
 - Meson requires **WirePlumber 0.5** (`wireplumber-0.5` pkg-config). 0.4 is not

@@ -2,6 +2,7 @@
 
 #include "config/config_service.h"
 #include "config/config_types.h"
+#include "core/input/event_codes.h"
 #include "core/ui_phase.h"
 #include "i18n/i18n.h"
 #include "pipewire/audio_glyphs.h"
@@ -15,7 +16,6 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
-#include <linux/input-event-codes.h>
 #include <memory>
 #include <utility>
 

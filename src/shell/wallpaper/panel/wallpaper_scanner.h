@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/poll_source.h"
+#include "core/process/wake_event.h"
 
 #include <atomic>
 #include <condition_variable>
@@ -35,7 +36,7 @@ struct WallpaperScanResult {
 // (and its per-entry stat calls) used to run synchronously on the UI thread,
 // freezing the shell on large folders. Results land in a main-thread cache and
 // fire onComplete() via the poll loop. Mirrors ThumbnailService's worker +
-// eventfd pattern.
+// pollable wake-event pattern.
 class WallpaperScanner : public PollSource {
 public:
   // Fired on the main thread after one or more scans land in the cache.
@@ -91,7 +92,7 @@ private:
   void workerLoop();
   void signalMain();
 
-  int m_eventFd = -1;
+  process::WakeEvent m_wakeEvent;
   std::thread m_worker;
   std::atomic<bool> m_shutdown{false};
 

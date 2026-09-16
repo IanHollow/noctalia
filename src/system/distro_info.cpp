@@ -153,6 +153,7 @@ std::string osAgeLabel() {
   std::uint64_t oldest = 0;
 
   for (const char* path : {"/", "/etc", "/var", "/home"}) {
+#if defined(__linux__)
     struct statx sx{};
     if (statx(AT_FDCWD, path, AT_SYMLINK_NOFOLLOW, STATX_BTIME, &sx) == 0
         && (sx.stx_mask & STATX_BTIME) != 0
@@ -162,6 +163,15 @@ std::string osAgeLabel() {
         oldest = birth;
       }
     }
+#elif defined(__FreeBSD__)
+    struct stat st{};
+    if (lstat(path, &st) == 0 && st.st_birthtim.tv_sec > 0) {
+      const auto birth = static_cast<std::uint64_t>(st.st_birthtim.tv_sec);
+      if (oldest == 0 || birth < oldest) {
+        oldest = birth;
+      }
+    }
+#endif
   }
 
   if (oldest == 0) {

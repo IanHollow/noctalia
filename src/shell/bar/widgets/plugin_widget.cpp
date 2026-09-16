@@ -1,6 +1,7 @@
 #include "shell/bar/widgets/plugin_widget.h"
 
 #include "compositors/compositor_platform.h"
+#include "core/input/event_codes.h"
 #include "core/log.h"
 #include "cursor-shape-v1-client-protocol.h"
 #include "dbus/mpris/mpris_service.h"
@@ -21,7 +22,6 @@
 #include <cstdlib>
 #include <fstream>
 #include <iomanip>
-#include <linux/input-event-codes.h>
 #include <optional>
 #include <sstream>
 #include <vector>

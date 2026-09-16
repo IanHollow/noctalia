@@ -1,5 +1,6 @@
 #include "capture/pointer_cursor_capture.h"
 
+#include "core/files/anonymous_file.h"
 #include "ext-image-capture-source-v1-client-protocol.h"
 #include "ext-image-copy-capture-v1-client-protocol.h"
 #include "wayland/wayland_connection.h"
@@ -269,10 +270,8 @@ struct PointerCursorCapturePending {
     bufferFormat = format;
     const int stride = bufferWidth * 4;
     mappedSize = static_cast<std::size_t>(stride) * height;
-#ifdef __linux__
-    fd = memfd_create("noctalia-cursor-capture", MFD_CLOEXEC | MFD_ALLOW_SEALING);
-#endif
-    if (fd < 0 || ftruncate(fd, static_cast<off_t>(mappedSize)) < 0) {
+    fd = core::createAnonymousFile("noctalia-cursor-capture", mappedSize, true);
+    if (fd < 0) {
       owner->fail("failed to allocate cursor shared-memory file");
       return;
     }

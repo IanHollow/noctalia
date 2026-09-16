@@ -1,9 +1,9 @@
+#include "core/input/event_codes.h"
 #include "render/scene/input_area.h"
 #include "render/scene/node.h"
 
 #include <chrono>
 #include <cstdio>
-#include <linux/input-event-codes.h>
 #include <memory>
 #include <print>
 #include <string>

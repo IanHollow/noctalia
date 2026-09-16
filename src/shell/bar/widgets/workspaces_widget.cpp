@@ -2,6 +2,7 @@
 
 #include "compositors/workspace_backend.h"
 #include "config/config_service.h"
+#include "core/input/event_codes.h"
 #include "core/ui_phase.h"
 #include "render/animation/animation.h"
 #include "render/animation/animation_manager.h"
@@ -21,7 +22,6 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
-#include <linux/input-event-codes.h>
 #include <optional>
 #include <utility>
 #include <wayland-client-protocol.h>

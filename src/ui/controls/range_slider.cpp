@@ -1,5 +1,6 @@
 #include "ui/controls/range_slider.h"
 
+#include "core/input/event_codes.h"
 #include "core/input/key_modifiers.h"
 #include "core/input/key_symbols.h"
 #include "core/input/keybind_matcher.h"
@@ -13,7 +14,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <linux/input-event-codes.h>
 #include <memory>
 
 namespace {

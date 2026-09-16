@@ -98,9 +98,18 @@ tomlplusplus_dep    = dependency('tomlplusplus')
 libical_dep         = dependency('libical')
 pam_dep             = cc.find_library('pam')
 dl_dep              = cpp.find_library('dl', required: false)
+threads_dep         = dependency('threads')
+
+inotify_deps = []
+if host_machine.system() == 'freebsd'
+  inotify_deps += dependency('libinotify')
+endif
 
 jemalloc_option = get_option('jemalloc')
-is_glibc = cpp.get_define('__GLIBC__', prefix: '#include <features.h>') != ''
+is_glibc = false
+if cpp.has_header('features.h')
+  is_glibc = cpp.get_define('__GLIBC__', prefix: '#include <features.h>') != ''
+endif
 jemalloc_deps = []
 jemalloc_cpp_args = []
 
@@ -187,12 +196,18 @@ mcu_dep = declare_dependency(
   include_directories: include_directories('third_party/material_color_utilities', is_system: true),
 )
 
-# ── System: stb_image_resize2 and stb_image_write (header-only) ─────────────────────────────────
-if not cc.has_header('stb/stb_image_resize2.h')
-  error('stb/stb_image_resize2.h not found')
+# System: stb_image_resize2 and stb_image_write (header-only) ─────────────────────────────────
+# Linux distributions commonly install these below include/stb, while the
+# FreeBSD package exports include/stb itself through stb.pc.
+stb_dep = dependency('stb', required: false)
+stb_deps = stb_dep.found() ? [stb_dep] : []
+if not cpp.has_header('stb/stb_image_resize2.h', dependencies: stb_deps) \
+    and not cpp.has_header('stb_image_resize2.h', dependencies: stb_deps)
+  error('stb_image_resize2.h not found')
 endif
-if not cc.has_header('stb/stb_image_write.h')
-  error('stb/stb_image_write.h not found')
+if not cpp.has_header('stb/stb_image_write.h', dependencies: stb_deps) \
+    and not cpp.has_header('stb_image_write.h', dependencies: stb_deps)
+  error('stb_image_write.h not found')
 endif
 
 # ── System: libwebp (WebP decode and thumbnail encode; demux for animations) ─
@@ -404,7 +419,7 @@ _wlr_ls_h = custom_target('wlr-layer-shell-unstable-v1-client-header',
   output:  'wlr-layer-shell-unstable-v1-client-protocol.h',
   command: [
     'sh', '-c',
-    '"$1" client-header "$2" "$3" && sed -i s/namespace/name_space/g "$3"',
+    '"$1" client-header "$2" "$3" && sed s/namespace/name_space/g "$3" > "$3.tmp" && mv "$3.tmp" "$3"',
     '_', wayland_scanner.full_path(), '@INPUT@', '@OUTPUT@',
   ],
 )
@@ -1070,7 +1085,8 @@ _noctalia_system_dependencies = [
   libjxl_dep,
   libjxl_threads_dep,
   sndfile_dep,
-] + jemalloc_deps + (dl_dep.found() ? [dl_dep] : [])
+  threads_dep,
+] + stb_deps + inotify_deps + jemalloc_deps + (dl_dep.found() ? [dl_dep] : [])
 
 _noctalia_dependencies = _noctalia_system_dependencies + [
   fzy_dep,

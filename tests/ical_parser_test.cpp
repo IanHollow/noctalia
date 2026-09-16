@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <ctime>
 #include <print>
 #include <string>
 #include <thread>
@@ -31,27 +32,25 @@ namespace {
     return calendar::parseICalEvents(ics, start, end, control);
   }
 
-  // Local midnight of a civil date in the system zone, matching how the parser anchors all-day
-  // occurrences. current_zone() reads /etc/localtime and ignores TZ, so all-day expectations must be
-  // computed from it rather than hardcoded to a single zone.
+  // Local midnight of a civil date in the system zone, matching how the parser anchors all-day occurrences.
   system_clock::time_point localMidnight(int y, int mo, int d) {
-    const local_days ld{year{y} / month{static_cast<unsigned>(mo)} / day{static_cast<unsigned>(d)}};
-    try {
-      return time_point_cast<system_clock::duration>(time_point_cast<seconds>(current_zone()->to_sys(ld)));
-    } catch (...) {
-      return sys_days{year{y} / month{static_cast<unsigned>(mo)} / day{static_cast<unsigned>(d)}};
-    }
+    std::tm local{};
+    local.tm_year = y - 1900;
+    local.tm_mon = mo - 1;
+    local.tm_mday = d;
+    local.tm_isdst = -1;
+    return system_clock::from_time_t(std::mktime(&local));
   }
 
   system_clock::time_point localTime(int y, int mo, int d, int h, int mi = 0) {
-    const local_seconds lt =
-        local_days{year{y} / month{static_cast<unsigned>(mo)} / day{static_cast<unsigned>(d)}} + hours{h} + minutes{mi};
-    try {
-      return time_point_cast<system_clock::duration>(time_point_cast<seconds>(current_zone()->to_sys(lt)));
-    } catch (...) {
-      const sys_days civilDay{year{y} / month{static_cast<unsigned>(mo)} / day{static_cast<unsigned>(d)}};
-      return civilDay + hours{h} + minutes{mi};
-    }
+    std::tm local{};
+    local.tm_year = y - 1900;
+    local.tm_mon = mo - 1;
+    local.tm_mday = d;
+    local.tm_hour = h;
+    local.tm_min = mi;
+    local.tm_isdst = -1;
+    return system_clock::from_time_t(std::mktime(&local));
   }
 
   // Assert the parsed occurrences' start instants exactly match `expected` (order-independent).
@@ -537,7 +536,7 @@ int main() {
   // The May occurrence must span its own local midnights (May 30 -> Jun 1), computed against the
   // running zone. In a zone whose DST starts on Mar 31 (e.g. Europe/Kyiv), the Mar 30->Apr 1 master
   // is 47 UTC hours, so applying that fixed duration would end the May instance an hour early; the
-  // civil-day span keeps it correct. Expectations track current_zone() so this holds in any zone.
+  // civil-day span keeps it correct. Expectations track the system-local zone, so this holds in any zone.
   {
     const std::string ics = "BEGIN:VEVENT\r\nUID:dst\r\nSUMMARY:s\r\nDTSTART;VALUE=DATE:20240330\r\n"
                             "DTEND;VALUE=DATE:20240401\r\nRRULE:FREQ=MONTHLY;COUNT=3\r\nEND:VEVENT\r\n";

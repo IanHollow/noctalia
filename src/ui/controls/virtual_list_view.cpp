@@ -1,12 +1,12 @@
 #include "ui/controls/virtual_list_view.h"
 
+#include "core/input/event_codes.h"
 #include "render/scene/input_area.h"
 #include "ui/controls/scroll_view.h"
 #include "ui/style.h"
 
 #include <algorithm>
 #include <cmath>
-#include <linux/input-event-codes.h>
 #include <memory>
 
 class VirtualListView::Canvas : public Node {

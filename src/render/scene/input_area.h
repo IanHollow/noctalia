@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/input/event_codes.h"
 #include "render/scene/node.h"
 #include "shell/tooltip/tooltip_content.h"
 
@@ -8,7 +9,6 @@
 #include <cstdint>
 #include <functional>
 #include <initializer_list>
-#include <linux/input-event-codes.h>
 #include <string>
 #include <string_view>
 

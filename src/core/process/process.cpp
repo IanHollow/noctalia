@@ -650,6 +650,7 @@ namespace {
     ::_exit(127);
   }
 
+#if defined(__linux__)
   // Only alphanum, ':', '_' and '.' allowed in systemd unit names
   std::string escapeSystemdUnitName(const std::string& input) {
     std::string res;
@@ -740,6 +741,7 @@ namespace {
         runOptions
     );
   }
+#endif
 } // namespace
 
 namespace process {

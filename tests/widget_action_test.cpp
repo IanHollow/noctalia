@@ -1,4 +1,5 @@
 #include "config/config_types.h"
+#include "core/input/event_codes.h"
 #include "render/scene/input_area.h"
 #include "shell/bar/widget_action.h"
 #include "shell/bar/widget_action_dispatcher.h"
@@ -8,7 +9,6 @@
 #include "ui/controls/input.h"
 
 #include <array>
-#include <linux/input-event-codes.h>
 #include <string>
 #include <wayland-client-protocol.h>
 

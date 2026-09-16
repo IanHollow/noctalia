@@ -1,6 +1,7 @@
 #include "shell/panel/panel_click_shield.h"
 
 #include "compositors/compositor_detect.h"
+#include "core/files/anonymous_file.h"
 #include "core/log.h"
 #include "viewporter-client-protocol.h"
 #include "wayland/layer_surface.h"
@@ -16,19 +17,8 @@ namespace {
 
   constexpr Logger kLog("panel-click-shield");
 
-  // Anonymous file backing for a tiny SHM pool. We use memfd_create so the fd
-  // is never visible on the filesystem.
-  int createAnonFd(std::size_t size) {
-    int fd = memfd_create("noctalia-click-shield", MFD_CLOEXEC);
-    if (fd < 0) {
-      return -1;
-    }
-    if (ftruncate(fd, static_cast<off_t>(size)) != 0) {
-      close(fd);
-      return -1;
-    }
-    return fd;
-  }
+  // Anonymous file backing for a tiny SHM pool.
+  int createAnonFd(std::size_t size) { return core::createAnonymousFile("noctalia-click-shield", size); }
 
   const zwlr_layer_surface_v1_listener kLayerSurfaceListener = {
       .configure = &PanelClickShield::handleConfigure,

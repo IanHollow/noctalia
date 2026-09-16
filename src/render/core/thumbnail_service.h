@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app/poll_source.h"
+#include "core/process/wake_event.h"
 #include "render/core/texture_handle.h"
 
 #include <atomic>
@@ -136,7 +137,7 @@ private:
     ReadyCallback callback;
   };
 
-  int m_eventFd = -1;
+  process::WakeEvent m_wakeEvent;
   std::vector<std::thread> m_workers;
   std::atomic<bool> m_shutdown{false};
 

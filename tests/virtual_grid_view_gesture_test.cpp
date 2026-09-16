@@ -4,6 +4,7 @@
 // reorderable item into a zero-distance drag the adapter can never tell apart
 // from a real one.
 
+#include "core/input/event_codes.h"
 #include "render/core/renderer.h"
 #include "render/scene/input_area.h"
 #include "render/scene/node.h"
@@ -11,7 +12,6 @@
 #include "ui/style.h"
 
 #include <cstddef>
-#include <linux/input-event-codes.h>
 #include <memory>
 #include <optional>
 #include <print>

@@ -93,24 +93,13 @@ namespace {
       };
     }
 
-    const time_zone* tz = nullptr;
-    try {
-      tz = locate_zone(tzName);
-    } catch (...) {
-    }
-
-    if (tz == nullptr) {
+    const std::int64_t unixSeconds = duration_cast<seconds>(now.time_since_epoch()).count();
+    const std::string formatted = formatTimezoneUnixTime(unixSeconds, "%H:%M:%S", tzName);
+    LocalTimeParts result;
+    if (std::sscanf(formatted.c_str(), "%d:%d:%d", &result.hour, &result.minute, &result.second) != 3) {
       return currentLocalTimeParts("");
     }
-
-    const auto local = tz->to_local(now);
-    const auto localDays = floor<days>(local);
-    hh_mm_ss time{floor<seconds>(local - localDays)};
-    return {
-        .hour = static_cast<int>(time.hours().count()),
-        .minute = static_cast<int>(time.minutes().count()),
-        .second = static_cast<int>(time.seconds().count()),
-    };
+    return result;
   }
 
   [[nodiscard]] Color resolvedColor(const ColorSpec& spec) { return resolveColorSpec(spec); }

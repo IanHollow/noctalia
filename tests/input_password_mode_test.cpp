@@ -1,9 +1,9 @@
+#include "core/input/event_codes.h"
 #include "core/input/key_modifiers.h"
 #include "core/text_clipboard.h"
 #include "render/scene/input_area.h"
 #include "ui/controls/input.h"
 
-#include <linux/input-event-codes.h>
 #include <optional>
 #include <print>
 #include <string>

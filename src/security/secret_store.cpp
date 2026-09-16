@@ -1,6 +1,7 @@
 #include "security/secret_store.h"
 
 #include "core/log.h"
+#include "core/process/wake_event.h"
 
 #include <cerrno>
 #include <chrono>
@@ -9,7 +10,6 @@
 #include <deque>
 #include <libsecret/secret.h>
 #include <limits>
-#include <sys/eventfd.h>
 #include <thread>
 #include <unistd.h>
 #include <utility>
@@ -621,9 +621,8 @@ namespace security {
       if (m_backend == nullptr) {
         throw std::invalid_argument("SecretStore requires a backend");
       }
-      m_eventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-      if (m_eventFd < 0) {
-        throw std::runtime_error("failed to create SecretStore eventfd");
+      if (!m_wakeEvent.valid()) {
+        throw std::runtime_error("failed to create SecretStore wake event");
       }
       m_worker = std::thread([this]() { workerLoop(); });
     }
@@ -650,8 +649,6 @@ namespace security {
         std::scoped_lock lock(m_completionMutex);
         m_completions.clear();
       }
-      ::close(m_eventFd);
-      m_eventFd = -1;
     }
 
     SecretStoreOperation enqueue(Request request) {
@@ -668,7 +665,9 @@ namespace security {
       return SecretStoreOperation(cancellation);
     }
 
-    void addPollFd(std::vector<pollfd>& fds) const { fds.push_back({.fd = m_eventFd, .events = POLLIN, .revents = 0}); }
+    void addPollFd(std::vector<pollfd>& fds) const {
+      fds.push_back({.fd = m_wakeEvent.fd(), .events = POLLIN, .revents = 0});
+    }
 
     void dispatch(const std::vector<pollfd>& fds, std::size_t startIdx) {
       if (startIdx >= fds.size() || (fds[startIdx].revents & (POLLIN | POLLERR | POLLHUP)) == 0) {
@@ -770,18 +769,12 @@ namespace security {
     }
 
     void signalMain() const {
-      constexpr std::uint64_t one = 1;
-      const ssize_t written = ::write(m_eventFd, &one, sizeof(one));
-      if (written < 0 && errno != EAGAIN) {
-        kLog.warn("failed to signal SecretStore eventfd: errno={}", errno);
+      if (!m_wakeEvent.signal()) {
+        kLog.warn("failed to signal SecretStore wake event: errno={}", errno);
       }
     }
 
-    void drainEventFd() const {
-      std::uint64_t ignored = 0;
-      while (::read(m_eventFd, &ignored, sizeof(ignored)) > 0) {
-      }
-    }
+    void drainEventFd() const { m_wakeEvent.drain(); }
 
     void updateAvailability(SecretStoreStatus status) {
       m_availabilityStatus = status == SecretStoreStatus::NotFound ? SecretStoreStatus::Success : status;
@@ -823,7 +816,7 @@ namespace security {
     }
 
     std::unique_ptr<SecretStoreBackend> m_backend;
-    int m_eventFd = -1;
+    process::WakeEvent m_wakeEvent;
     std::thread m_worker;
 
     mutable std::mutex m_queueMutex;

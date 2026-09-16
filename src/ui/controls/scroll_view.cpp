@@ -1,5 +1,6 @@
 #include "ui/controls/scroll_view.h"
 
+#include "core/input/event_codes.h"
 #include "render/animation/animation_manager.h"
 #include "render/core/render_styles.h"
 #include "render/scene/input_area.h"
@@ -11,7 +12,6 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <linux/input-event-codes.h>
 #include <memory>
 #include <utility>
 #include <wayland-client-protocol.h>

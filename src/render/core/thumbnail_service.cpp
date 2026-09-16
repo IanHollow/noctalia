@@ -2,6 +2,7 @@
 
 #include "core/log.h"
 #include "render/core/image_decoder.h"
+#include "render/core/stb_image_resize2_compat.h"
 #include "render/core/texture_manager.h"
 #include "util/file_utils.h"
 
@@ -13,8 +14,6 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
-#include <stb/stb_image_resize2.h>
-#include <sys/eventfd.h>
 #include <system_error>
 #include <unistd.h>
 #include <utility>
@@ -179,9 +178,8 @@ void ThumbnailService::Subscription::disconnect() {
 }
 
 ThumbnailService::ThumbnailService() {
-  m_eventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-  if (m_eventFd < 0) {
-    kLog.warn("failed to create eventfd; thumbnail wakeups will be disabled");
+  if (!m_wakeEvent.valid()) {
+    kLog.warn("failed to create wake event; thumbnail wakeups will be disabled");
   }
 
   const unsigned hc = std::thread::hardware_concurrency();
@@ -213,11 +211,6 @@ ThumbnailService::~ThumbnailService() {
   }
 
   deleteAllTextures();
-
-  if (m_eventFd >= 0) {
-    ::close(m_eventFd);
-    m_eventFd = -1;
-  }
 }
 
 ThumbnailService::Subscription ThumbnailService::subscribePendingUpload(PendingUploadCallback callback) {
@@ -423,35 +416,31 @@ void ThumbnailService::abandonGpuResources() noexcept {
 }
 
 void ThumbnailService::doAddPollFds(std::vector<pollfd>& fds) {
-  if (m_eventFd < 0) {
+  if (!m_wakeEvent.valid()) {
     return;
   }
-  fds.push_back({.fd = m_eventFd, .events = POLLIN, .revents = 0});
+  fds.push_back({.fd = m_wakeEvent.fd(), .events = POLLIN, .revents = 0});
 }
 
 void ThumbnailService::dispatch(const std::vector<pollfd>& fds, std::size_t startIdx) {
-  if (m_eventFd < 0 || startIdx >= fds.size()) {
+  if (!m_wakeEvent.valid() || startIdx >= fds.size()) {
     return;
   }
   if ((fds[startIdx].revents & POLLIN) == 0) {
     return;
   }
 
-  std::uint64_t ignored = 0;
-  while (::read(m_eventFd, &ignored, sizeof(ignored)) > 0) {
-  }
+  m_wakeEvent.drain();
 
   notifyPendingUpload();
 }
 
 void ThumbnailService::signalMain() {
-  if (m_eventFd < 0) {
+  if (!m_wakeEvent.valid()) {
     return;
   }
-  const std::uint64_t one = 1;
-  const ssize_t written = ::write(m_eventFd, &one, sizeof(one));
-  if (written < 0 && errno != EAGAIN) {
-    kLog.warn("failed to signal thumbnail eventfd: errno={}", errno);
+  if (!m_wakeEvent.signal()) {
+    kLog.warn("failed to signal thumbnail wake event: errno={}", errno);
   }
 }
 

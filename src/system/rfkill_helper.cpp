@@ -8,11 +8,15 @@
 #include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
+#if defined(__linux__)
 #include <linux/rfkill.h>
+#endif
 #include <optional>
 #include <string>
 #include <unistd.h>
 #include <vector>
+
+#if defined(__linux__)
 
 namespace {
 
@@ -260,3 +264,19 @@ RfkillSwitchResult setRfkillSoftBlockedForNetInterface(std::string_view ifname, 
 bool isRfkillSoftBlocked(RfkillDeviceType type) { return std::ranges::any_of(findEntries(type), &RfkillEntry::soft); }
 
 bool isRfkillHardBlocked(RfkillDeviceType type) { return std::ranges::any_of(findEntries(type), &RfkillEntry::hard); }
+
+#else
+
+RfkillSwitchResult setRfkillSoftBlocked(RfkillDeviceType, bool) {
+  return {.success = false, .detail = "rfkill is unavailable on this platform"};
+}
+
+RfkillSwitchResult setRfkillSoftBlockedForNetInterface(std::string_view, bool) {
+  return {.success = false, .detail = "rfkill is unavailable on this platform"};
+}
+
+bool isRfkillSoftBlocked(RfkillDeviceType) { return false; }
+
+bool isRfkillHardBlocked(RfkillDeviceType) { return false; }
+
+#endif

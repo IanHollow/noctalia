@@ -5,6 +5,7 @@
 #include "compositors/workspace_backend.h"
 #include "config/config_service.h"
 #include "core/deferred_call.h"
+#include "core/input/event_codes.h"
 #include "i18n/i18n.h"
 #include "render/core/color.h"
 #include "render/core/renderer.h"
@@ -33,7 +34,6 @@
 #include <chrono>
 #include <cmath>
 #include <functional>
-#include <linux/input-event-codes.h>
 #include <memory>
 #include <optional>
 #include <unordered_map>

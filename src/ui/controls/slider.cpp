@@ -1,5 +1,6 @@
 #include "ui/controls/slider.h"
 
+#include "core/input/event_codes.h"
 #include "core/input/key_symbols.h"
 #include "core/input/keybind_matcher.h"
 #include "cursor-shape-v1-client-protocol.h"
@@ -12,7 +13,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <linux/input-event-codes.h>
 #include <memory>
 
 namespace {

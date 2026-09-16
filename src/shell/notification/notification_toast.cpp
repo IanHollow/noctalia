@@ -3,6 +3,7 @@
 #include "config/config_service.h"
 #include "config/config_types.h"
 #include "core/deferred_call.h"
+#include "core/input/event_codes.h"
 #include "core/log.h"
 #include "core/ui_phase.h"
 #include "cursor-shape-v1-client-protocol.h"
@@ -28,7 +29,6 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
-#include <linux/input-event-codes.h>
 #include <unistd.h>
 #include <vector>
 

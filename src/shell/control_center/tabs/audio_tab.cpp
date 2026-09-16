@@ -1480,15 +1480,18 @@ void AudioTab::openDeviceMenu(DeviceVolumeCardState& card, const DeviceMenuModel
   const AudioState& state = m_audio->state();
 
   const std::uint32_t defaultDeviceId = menu.defaultDeviceId(state);
-  auto items = availableDevices(menu.devices(state), defaultDeviceId)
-      | std::views::transform([&](const AudioNode& node) {
-                 return DeviceMenuItem{
-                     .id = node.id,
-                     .label = audioDeviceLabel(node),
-                     .selected = node.id == defaultDeviceId,
-                 };
-               })
-      | std::ranges::to<std::vector>();
+  const auto devices = availableDevices(menu.devices(state), defaultDeviceId);
+  std::vector<DeviceMenuItem> items;
+  items.reserve(devices.size());
+  for (const AudioNode& node : devices) {
+    items.push_back(
+        DeviceMenuItem{
+            .id = node.id,
+            .label = audioDeviceLabel(node),
+            .selected = node.id == defaultDeviceId,
+        }
+    );
+  }
   auto entries = buildDeviceMenuEntries(std::move(items));
 
   if (card.menuAnchor == nullptr) {
@@ -1567,15 +1570,18 @@ void AudioTab::openProgramRoutingMenu(Node* anchor, std::uint32_t programStreamI
     return;
   }
 
-  auto items = availableDevices(state.sinks, state.defaultSinkId)
-      | std::views::transform([&](const AudioNode& sink) {
-                 return DeviceMenuItem{
-                     .id = sink.id,
-                     .label = audioDeviceLabel(sink),
-                     .selected = stream->routePinned && sink.id == stream->routeSinkId,
-                 };
-               })
-      | std::ranges::to<std::vector>();
+  const auto devices = availableDevices(state.sinks, state.defaultSinkId);
+  std::vector<DeviceMenuItem> items;
+  items.reserve(devices.size());
+  for (const AudioNode& sink : devices) {
+    items.push_back(
+        DeviceMenuItem{
+            .id = sink.id,
+            .label = audioDeviceLabel(sink),
+            .selected = stream->routePinned && sink.id == stream->routeSinkId,
+        }
+    );
+  }
 
   // Entry id 0 clears the route: the stream follows the default sink again.
   std::vector<ContextMenuControlEntry> entries{

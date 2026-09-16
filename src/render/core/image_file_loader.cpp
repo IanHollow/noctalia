@@ -1,6 +1,7 @@
 #include "render/core/image_file_loader.h"
 
 #include "render/core/image_decoder.h"
+#include "render/core/stb_image_resize2_compat.h"
 #include "util/file_utils.h"
 
 #include <algorithm>
@@ -10,7 +11,6 @@
 #include <cstdint>
 #include <cstring>
 #include <expected>
-#include <stb/stb_image_resize2.h>
 #include <string_view>
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wexpansion-to-defined"

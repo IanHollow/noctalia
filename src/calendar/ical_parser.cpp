@@ -69,11 +69,13 @@ namespace calendar {
         return {};
       }
 
-      try {
-        return toSystem(time_point_cast<seconds>(current_zone()->to_sys(local_days{ymd})));
-      } catch (...) {
-        return toSystem(sys_days{ymd});
-      }
+      std::tm local{};
+      local.tm_year = t.year - 1900;
+      local.tm_mon = t.month - 1;
+      local.tm_mday = t.day;
+      local.tm_isdst = -1;
+      const std::time_t unixSeconds = std::mktime(&local);
+      return unixSeconds != static_cast<std::time_t>(-1) ? fromUnix(unixSeconds) : toSystem(sys_days{ymd});
     }
 
     std::chrono::system_clock::time_point localDateTime(int y, int mo, int d, int h, int mi, int s) {
@@ -83,12 +85,18 @@ namespace calendar {
         return {};
       }
 
-      const local_seconds local = local_days{ymd} + hours{h} + minutes{mi} + seconds{s};
-      try {
-        return toSystem(time_point_cast<seconds>(current_zone()->to_sys(local)));
-      } catch (...) {
-        return toSystem(sys_days{ymd} + hours{h} + minutes{mi} + seconds{s});
-      }
+      std::tm local{};
+      local.tm_year = y - 1900;
+      local.tm_mon = mo - 1;
+      local.tm_mday = d;
+      local.tm_hour = h;
+      local.tm_min = mi;
+      local.tm_sec = s;
+      local.tm_isdst = -1;
+      const std::time_t unixSeconds = std::mktime(&local);
+      return unixSeconds != static_cast<std::time_t>(-1)
+          ? fromUnix(unixSeconds)
+          : toSystem(sys_days{ymd} + hours{h} + minutes{mi} + seconds{s});
     }
 
     std::chrono::system_clock::time_point localDateTime(const icaltimetype& t) {
@@ -143,25 +151,16 @@ namespace calendar {
     }
 
     icaltimetype localICalTime(std::chrono::system_clock::time_point t) {
-      using namespace std::chrono;
-      sys_seconds wallTime = floor<seconds>(t);
-      try {
-        const local_seconds local = floor<seconds>(current_zone()->to_local(t));
-        wallTime = sys_seconds{local.time_since_epoch()};
-      } catch (...) {
-        // Keep UTC wall fields when the system timezone database is unavailable.
-      }
-
-      const sys_days day = floor<days>(wallTime);
-      const year_month_day ymd{day};
-      const hh_mm_ss time{wallTime - day};
+      const std::time_t unixSeconds = toUnix(t);
+      std::tm local{};
+      localtime_r(&unixSeconds, &local);
       icaltimetype result = icaltime_null_time();
-      result.year = static_cast<int>(ymd.year());
-      result.month = static_cast<int>(static_cast<unsigned>(ymd.month()));
-      result.day = static_cast<int>(static_cast<unsigned>(ymd.day()));
-      result.hour = static_cast<int>(time.hours().count());
-      result.minute = static_cast<int>(time.minutes().count());
-      result.second = static_cast<int>(time.seconds().count());
+      result.year = local.tm_year + 1900;
+      result.month = local.tm_mon + 1;
+      result.day = local.tm_mday;
+      result.hour = local.tm_hour;
+      result.minute = local.tm_min;
+      result.second = local.tm_sec;
       return result;
     }
 

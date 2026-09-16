@@ -1,6 +1,7 @@
 #include "shell/bar/widgets/tray_widget.h"
 
 #include "config/config_service.h"
+#include "core/input/event_codes.h"
 #include "core/log.h"
 #include "core/ui_phase.h"
 #include "dbus/tray/tray_service.h"
@@ -22,7 +23,6 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
-#include <linux/input-event-codes.h>
 #include <memory>
 #include <optional>
 #include <string>

@@ -2,6 +2,7 @@
 
 #include "config/config_types.h"
 #include "core/deferred_call.h"
+#include "core/input/event_codes.h"
 #include "core/input/key_symbols.h"
 #include "core/input/keybind_matcher.h"
 #include "core/log.h"
@@ -32,7 +33,6 @@
 #include <cmath>
 #include <cstdio>
 #include <functional>
-#include <linux/input-event-codes.h>
 #include <memory>
 #include <utility>
 

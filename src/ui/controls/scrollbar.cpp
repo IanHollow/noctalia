@@ -1,5 +1,6 @@
 #include "ui/controls/scrollbar.h"
 
+#include "core/input/event_codes.h"
 #include "cursor-shape-v1-client-protocol.h"
 #include "render/animation/animation.h"
 #include "render/animation/animation_manager.h"
@@ -10,7 +11,6 @@
 #include "ui/style.h"
 
 #include <algorithm>
-#include <linux/input-event-codes.h>
 #include <memory>
 #include <wayland-client-protocol.h>
 

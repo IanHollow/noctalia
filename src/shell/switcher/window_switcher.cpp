@@ -5,6 +5,7 @@
 #include "compositors/hyprland/hyprland_window_id.h"
 #include "config/config_service.h"
 #include "core/deferred_call.h"
+#include "core/input/event_codes.h"
 #include "core/input/key_modifiers.h"
 #include "core/input/key_symbols.h"
 #include "core/input/keybind_matcher.h"
@@ -37,7 +38,6 @@
 #include <cmath>
 #include <deque>
 #include <limits>
-#include <linux/input-event-codes.h>
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
