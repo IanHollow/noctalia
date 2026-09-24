@@ -32,18 +32,20 @@ int main() {
   const fs::path root(tempDir);
   const fs::path iconThemeRoot = root / "icons/hicolor";
   const fs::path iconDir = iconThemeRoot / "scalable/apps";
+  const fs::path app16Dir = iconThemeRoot / "16x16/apps";
   const fs::path bitmapIconDir = iconThemeRoot / "48x48/apps";
   const fs::path status16Dir = iconThemeRoot / "16x16/status";
   const fs::path status24Dir = iconThemeRoot / "24x24/status";
   const fs::path deniedDataHome = root / "denied";
   const fs::path deniedIcon = deniedDataHome / "private-icon.svg";
   fs::create_directories(iconDir);
+  fs::create_directories(app16Dir);
   fs::create_directories(bitmapIconDir);
   fs::create_directories(status16Dir);
   fs::create_directories(status24Dir);
   std::ofstream(iconThemeRoot / "index.theme")
       << "[Icon Theme]\n"
-         "Directories = 48x48/apps, scalable/apps, 16x16/status, 24x24/status\n"
+         "Directories = 48x48/apps, scalable/apps, 16x16/apps, 16x16/status, 24x24/status\n"
          "Inherits = noctalia-bare-test\n"
          "[48x48/apps]\n"
          "Size = 48\n"
@@ -52,6 +54,9 @@ int main() {
          "Size = 64\n"
          "Type = Scalable\n"
          "MaxSize = 128\n"
+         "[16x16/apps]\n"
+         "Size = 16\n"
+         "Type = Fixed\n"
          "[16x16/status]\n"
          "Size = 16\n"
          "Type = Fixed\n"
@@ -61,10 +66,14 @@ int main() {
   const fs::path status16 = status16Dir / "test-status-symbolic.svg";
   const fs::path status24 = status24Dir / "test-status-symbolic.svg";
   const fs::path ordinaryIcon = iconDir / "ordinary-icon.svg";
+  const fs::path symbolicApp16 = app16Dir / "test-app-symbolic.svg";
+  const fs::path symbolicAppScalable = iconDir / "test-app-symbolic.svg";
   const fs::path bitmapStatus = bitmapIconDir / "bitmap-status.png";
   std::ofstream(status16) << "<svg/>";
   std::ofstream(status24) << "<svg/>";
   std::ofstream(ordinaryIcon) << "<svg/>";
+  std::ofstream(symbolicApp16) << "<svg/>";
+  std::ofstream(symbolicAppScalable) << "<svg/>";
   std::ofstream(bitmapStatus) << "png";
 
   // An inherited theme with no index.theme exercises the fallback search paths
@@ -129,6 +138,12 @@ int main() {
            resolver.resolveStatusVector("ordinary-icon", 16).empty()
                && resolver.resolve("ordinary-icon", 32) == ordinaryIcon.string(),
            "ordinary application icons should keep normal resolution"
+       )
+      && ok;
+  ok = expect(
+           resolver.resolveStatusVector("test-app-symbolic", 16).empty()
+               && resolver.resolve("test-app-symbolic", 32) == symbolicAppScalable.string(),
+           "symbolic application icons should keep normal resolution"
        )
       && ok;
   ok = expect(

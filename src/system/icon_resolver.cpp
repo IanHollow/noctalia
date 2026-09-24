@@ -547,7 +547,8 @@ std::string IconResolver::resolveStatusVector(const std::string& iconName, int t
   ensureFresh();
 
   const auto isStatusVector = [](std::string_view path) {
-    return path.ends_with("-symbolic.svg") || path.contains("/status/") || path.contains("/panel/");
+    // Application icons can also have a -symbolic suffix.
+    return path.contains("/status/") || path.contains("/panel/");
   };
   if (iconName.front() == '/') {
     return isStatusVector(iconName) && pathExists(iconName) ? iconName : std::string{};
