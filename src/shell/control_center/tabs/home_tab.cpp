@@ -508,7 +508,7 @@ std::unique_ptr<Flex> HomeTab::create() {
       )
   );
 
-  // A date card remains useful when weather is deliberately disabled.
+  // Opens Weather when weather is enabled, otherwise Calendar.
   m_dateTimeCardArea = addCardOverlay(*m_dateTimeCard, [this]() {
     openControlCenterTab(m_weather != nullptr && m_weather->enabled() ? "weather" : "calendar");
   });
