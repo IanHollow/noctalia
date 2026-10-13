@@ -934,6 +934,7 @@ std::string TrayWidget::resolveIconPath(const TrayItemInfo& item) {
 
   const float logicalSize = m_customItemSize.value_or(Style::baseGlyphSize) * m_contentScale;
   const int iconSize = std::max(1, static_cast<int>(std::round(logicalSize)));
+  // Match the on-screen request size used when the icon is loaded (see rebuild).
   const int rasterSize = std::max(32, static_cast<int>(std::round(logicalSize * 2.0F)));
   auto resolveThemed = [this, iconSize, rasterSize](const std::string& name) {
     if (const auto vector = m_iconResolver.resolveStatusVector(name, iconSize); !vector.empty()) {
