@@ -43,8 +43,7 @@ int main() {
   fs::create_directories(bitmapIconDir);
   fs::create_directories(status16Dir);
   fs::create_directories(status24Dir);
-  std::ofstream(iconThemeRoot / "index.theme")
-      << "[Icon Theme]\n"
+  const std::string indexContents = "[Icon Theme]\n"
          "Directories = 48x48/apps, scalable/apps, 16x16/apps, 16x16/status, 24x24/status\n"
          "Inherits = noctalia-bare-test\n"
          "[48x48/apps]\n"
@@ -63,6 +62,7 @@ int main() {
          "[24x24/status]\n"
          "Size = 24\n"
          "Type = Fixed\n";
+  std::ofstream(iconThemeRoot / "index.theme") << indexContents;
   const fs::path status16 = status16Dir / "test-status-symbolic.svg";
   const fs::path status24 = status24Dir / "test-status-symbolic.svg";
   const fs::path ordinaryIcon = iconDir / "ordinary-icon.svg";
@@ -85,12 +85,22 @@ int main() {
   const fs::path bareRootIcon = bareThemeRoot / "bare-root-icon.png";
   std::ofstream(bareSizedIcon) << "png";
   std::ofstream(bareRootIcon) << "png";
+  const fs::path themedBitmap = bitmapIconDir / "theme-priority.png";
+  std::ofstream(themedBitmap) << "png";
+  std::ofstream(bareThemeRoot / "theme-priority.svg") << "<svg/>";
+  std::ofstream(bitmapIconDir / "bitmap-priority.png") << "png";
+  std::ofstream(bareBitmapDir / "bitmap-priority.png") << "png";
+  const fs::path extraData = root / "extra";
+  const fs::path extraIcons = extraData / "icons/hicolor/scalable/apps";
+  fs::create_directories(extraIcons);
+  std::ofstream(extraIcons / "later-root.svg") << "<svg/>";
+  std::ofstream(bareThemeRoot / "later-root.svg") << "<svg/>";
   fs::create_directories(deniedDataHome);
   std::ofstream(deniedIcon) << "<svg/>";
   fs::permissions(deniedDataHome, fs::perms::none);
   setenv("HOME", tempDir, 1);
   setenv("XDG_DATA_HOME", deniedDataHome.c_str(), 1);
-  setenv("XDG_DATA_DIRS", tempDir, 1);
+  setenv("XDG_DATA_DIRS", (root.string() + ":" + extraData.string()).c_str(), 1);
 
   bool ok = true;
 
@@ -110,7 +120,14 @@ int main() {
   }
 
   IconResolver resolver(true);
-
+  const auto initialGeneration = IconResolver::themeGeneration();
+  std::ofstream(iconThemeRoot / "index.theme") << indexContents;
+  ok = expect(!IconResolver::checkThemePlanChanged(), "an equivalent theme metadata rewrite should be ignored") && ok;
+  ok = expect(
+           IconResolver::themeGeneration() == initialGeneration,
+           "an equivalent theme metadata rewrite should preserve the theme generation"
+       )
+      && ok;
   std::fflush(stderr);
   (void)::dup2(savedStderr, STDERR_FILENO);
   ::close(savedStderr);
@@ -186,10 +203,10 @@ int main() {
   const fs::path polledIcon = iconDir / "polled-icon.svg";
   ok = expect(resolver.resolve("polled-icon", 32).empty(), "second initial icon miss should be cached") && ok;
   std::ofstream(polledIcon) << "<svg/>";
-  ok = expect(IconResolver::checkThemeChanged(), "theme poll should detect icon directory changes") && ok;
+  IconResolver::invalidateThemeContent();
   ok = expect(
            resolver.resolve("polled-icon", 32) == polledIcon.string(),
-           "theme generation change should invalidate cached misses"
+           "icon content invalidation should clear cached misses"
        )
       && ok;
 
@@ -227,6 +244,24 @@ int main() {
            "index-less inherited theme should resolve icons at the theme root"
        )
       && ok;
+
+  for (const int size : {0, 32, 64, 128}) {
+    ok = expect(
+             resolver.resolve("bitmap-priority", size) == (bitmapIconDir / "bitmap-priority.png").string(),
+             "current-theme bitmap must precede a better-sized inherited bitmap"
+         )
+        && ok;
+    ok = expect(
+             resolver.resolve("theme-priority", size) == themedBitmap.string(),
+             "current-theme bitmap must precede an inherited vector icon"
+         )
+        && ok;
+    ok = expect(
+             resolver.resolve("later-root", size) == (extraIcons / "later-root.svg").string(),
+             "all roots of the current theme must precede inherited themes"
+         )
+        && ok;
+  }
 
   fs::remove_all(root, ec);
   return ok ? 0 : 1;

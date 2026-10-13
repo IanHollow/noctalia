@@ -13,6 +13,14 @@ struct IconSearchDir {
   std::string themeRoot;
   int size = 0;
   bool scalable = false;
+  std::string theme;
+};
+
+struct IconThemeWatchPaths {
+  std::vector<std::string> baseDirs;
+  std::vector<std::string> themeRoots;
+  std::vector<std::string> iconDirs;
+  std::vector<std::string> settingsFiles;
 };
 
 class IconResolver {
@@ -20,11 +28,12 @@ public:
   IconResolver();
   explicit IconResolver(bool cacheMissing);
 
-  // targetSize is the intended on-screen pixel size. When > 0, a vector (SVG)
-  // icon is preferred and, among bitmaps, the smallest theme size that is still
-  // >= targetSize wins (falling back to the largest available) so we downscale
-  // gently instead of crushing a 1024px PNG. targetSize == 0 keeps the legacy
-  // "prefer scalable, then largest" behavior for callers that have no size.
+  // targetSize is the intended on-screen pixel size. The first theme in
+  // inheritance order that has the icon wins. When > 0, a vector (SVG) icon is
+  // preferred within that theme and, among its bitmaps, the smallest size that is
+  // still >= targetSize wins (falling back to the largest available) so we
+  // downscale gently instead of crushing a 1024px PNG. targetSize == 0 keeps the
+  // legacy "prefer scalable, then largest" behavior for callers that have no size.
   const std::string& resolve(const std::string& iconName, int targetSize = 0);
   // Select a size-specific vector from the first theme that provides this
   // status icon. Returns empty for ordinary application icons and bitmaps.
@@ -32,6 +41,9 @@ public:
   void invalidateMissingCache();
 
   static bool checkThemeChanged();
+  static bool checkThemePlanChanged();
+  static void invalidateThemeContent();
+  static IconThemeWatchPaths themeWatchPaths();
   static std::uint64_t themeGeneration();
   static std::string activeThemeName();
 

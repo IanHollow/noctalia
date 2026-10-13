@@ -257,7 +257,6 @@
       "uptime": "Thời gian hoạt động - {uptime}",
       "weather": {
         "data-unavailable": "Không thể tải dữ liệu thời tiết.",
-        "disabled": "Tính năng thời tiết đã bị vô hiệu hóa trong config.",
         "fetching": "Đang cập nhật dự báo thời tiết..."
       }
     },
@@ -1984,10 +1983,6 @@
         "main-axis-padding": {
           "description": "Khoảng đệm bên trong dọc theo trục chính của Dock (giữa các biểu tượng và các cạnh ngắn của Capsule)"
         },
-        "monitors": {
-          "description": "Chọn màn hình hiển thị Dock (để trống cho tất cả); tính năng lọc theo màn hình đang hoạt động sẽ áp dụng trong các màn hình này",
-          "label": "Màn hình"
-        },
         "pinned-apps": {
           "description": "ID mục nhập desktop của các ứng dụng được ghim vào Dock",
           "label": "Ứng dụng đã ghim"
@@ -2287,10 +2282,6 @@
           "description": "Chọn tối đa sáu nút lối tắt cho tab Trang chủ",
           "label": "Lối tắt Trang chủ"
         },
-        "launcher-app-grid": {
-          "description": "Hiển thị lưới biểu tượng ứng dụng với nhãn bên dưới khi kết quả chỉ bao gồm ứng dụng",
-          "label": "Hiển thị ứng dụng dạng lưới"
-        },
         "launcher-auto-paste": {
           "label": "Tự động dán"
         },
@@ -2301,6 +2292,10 @@
         "launcher-compact": {
           "description": "Dùng biểu tượng nhỏ hơn và hàng kết quả gọn hơn",
           "label": "Hàng gọn"
+        },
+        "launcher-grid": {
+          "description": "Hiển thị lưới biểu tượng ứng dụng với nhãn bên dưới khi kết quả chỉ bao gồm ứng dụng",
+          "label": "Hiển thị ứng dụng dạng lưới"
         },
         "launcher-pinned-apps": {
           "label": "Ứng dụng đã được ghim"

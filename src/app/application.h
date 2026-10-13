@@ -15,6 +15,7 @@
 #include "core/timer_manager.h"
 #include "dbus/network/external_ip_service.h"
 #include "dbus/notification/notification_poll_source.h"
+#include "dbus/secret/secret_collection_probe.h"
 #include "hooks/battery_hook_state.h"
 #include "hooks/hook_manager.h"
 #include "idle/idle_grace_overlay.h"
@@ -32,6 +33,7 @@
 #include "render/gl_shared_context.h"
 #include "render/render_context.h"
 #include "scripting/plugin_manager.h"
+#include "scripting/plugin_recommendations.h"
 #include "scripting/plugin_service_host.h"
 #include "scripting/script_api_context.h"
 #include "security/secret_store.h"
@@ -170,6 +172,7 @@ private:
   void initAuxServicesAndHooks();
   void initSystemBusServices();
   void initBrightnessAndPipewire();
+  void initEarlySessionBusAndTray();
   void initSessionBusServices();
   void initUi();
   // Sub-phases of initUi(), called in order.
@@ -207,8 +210,7 @@ private:
   // actually unlocked, so a lookup that lost the startup race recovers without restarting Noctalia.
   void installSecretServiceCollectionWatch();
   void onSecretServiceCollectionChanged();
-  [[nodiscard]] bool defaultSecretCollectionUnlocked();
-  void retrySecretServiceConsumers();
+  void retrySecretServiceConsumers(bool defaultCollectionUnlocked = false);
   void scheduleNotificationShellRefresh();
   void syncPolkitAgent();
   [[nodiscard]] bool likelySupportsInSessionPolkit() const noexcept;
@@ -249,6 +251,7 @@ private:
   scripting::ScriptApiContext m_scriptApi;
   std::function<void()> m_syncScriptApiOutputs;
   scripting::PluginManager m_pluginManager{m_configService};
+  scripting::PluginRecommendations m_pluginRecommendations{m_configService, m_httpClient, m_pluginManager};
   scripting::PluginServiceHost m_pluginServiceHost{m_scriptApi, &m_httpClient, &m_clipboardService, &m_fileWatcher};
   TimeService m_timeService;
   LockKeysService m_lockKeysService;
@@ -256,6 +259,9 @@ private:
   CalendarService m_calendarService;
   CalendarReminderMonitor m_calendarReminderMonitor{m_configService, m_notificationManager};
   std::unique_ptr<SessionBus> m_bus;
+  // Set when the early session bus connection fails. Reported once i18n has been
+  // initialized in initStyleThemeAndWayland().
+  std::optional<std::string> m_earlySessionBusError;
   std::unique_ptr<SystemBus> m_systemBus;
   std::unique_ptr<LogindService> m_logindService;
   // Set on PrepareForSleep(true); cleared when the session lock engages (or the lock aborts).
@@ -308,6 +314,7 @@ private:
   std::unique_ptr<sdbus::IProxy> m_secretServiceNameWatchProxy;
   bool m_secretServiceNameWatchInstalled = false;
   std::unique_ptr<sdbus::IProxy> m_secretServiceCollectionWatchProxy;
+  std::unique_ptr<SecretCollectionProbe> m_secretServiceCollectionProbe;
   bool m_secretServiceCollectionWatchInstalled = false;
   bool m_secretServiceOwned = false;
   bool m_storageKeyAutoRetried = false;
@@ -324,6 +331,8 @@ private:
   GlSharedContext m_glShared;
   SharedTextureCache m_sharedTextureCache;
   RenderContext m_renderContext;
+  // Image controls in panels retain cache-backed handles during teardown.
+  AsyncTextureCache m_asyncTextureCache;
   ThumbnailService m_thumbnailService;
   WallpaperScanner m_wallpaperScanner;
   Bar m_bar;
@@ -359,7 +368,6 @@ private:
   ColorPickerDialogPopup m_colorPickerDialogPopup;
   GlyphPickerDialogPopup m_glyphPickerDialogPopup;
   FileDialogPopup m_fileDialogPopup;
-  AsyncTextureCache m_asyncTextureCache;
 
   // Poll sources (must outlive MainLoop)
   std::unique_ptr<SessionBusPollSource> m_busPollSource;
@@ -391,7 +399,6 @@ private:
   WeatherPollSource m_weatherPollSource{m_weatherService};
   CalendarPollSource m_calendarPollSource{m_calendarService};
   CalendarReminderPollSource m_calendarReminderPollSource{m_calendarReminderMonitor};
-  Timer m_trayInitTimer;
   Timer m_polkitInitTimer;
   Timer m_polkitIdleCloseTimer;
   Timer m_greeterSyncTimeoutTimer;
